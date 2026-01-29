@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+        <xsd:element name="root" msdata:IsDataSet="true">
+            <xsd:complexType>
+                <xsd:choice maxOccurs="unbounded">
+                    <xsd:element name="data">
+                        <xsd:complexType>
+                            <xsd:sequence>
+                                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                            </xsd:sequence>
+                            <xsd:attribute name="name" type="xsd:string" use="required" />
+                        </xsd:complexType>
+                    </xsd:element>
+                </xsd:choice>
+            </xsd:complexType>
+        </xsd:element>
+    </xsd:schema>
+    <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+    <resheader name="version"><value>2.0</value></resheader>
+    <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+    <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+    <data name="MenuTitle" xml:space="preserve"><value>--- EasySave Menu ---</value></data>
+    <data name="MenuCreate" xml:space="preserve"><value>1. Create a backup job</value></data>
+    <data name="MenuList" xml:space="preserve"><value>2. List backup jobs</value></data>
+    <data name="MenuExecute" xml:space="preserve"><value>3. Execute backup(s)</value></data>
+    <data name="MenuExit" xml:space="preserve"><value>4. Exit</value></data>
+    <data name="SelectOption" xml:space="preserve"><value>Select an option: </value></data>
+    <data name="CurrentJobsTitle" xml:space="preserve"><value>--- Current Backup Jobs ---</value></data>
+    <data name="EnterJobNumber" xml:space="preserve"><value>Enter the job number to execute (e.g., 1): </value></data>
+    <data name="InvalidSelection" xml:space="preserve"><value>Invalid selection.</value></data>
+    <data name="NewJobHeader" xml:space="preserve"><value>--- New Backup Job ---</value></data>
+    <data name="PromptName" xml:space="preserve"><value>Name: </value></data>
+    <data name="PromptSource" xml:space="preserve"><value>Source Directory: </value></data>
+    <data name="PromptTarget" xml:space="preserve"><value>Target Directory: </value></data>
+    <data name="PromptType" xml:space="preserve"><value>Type (1: Full, 2: Differential): </value></data>
+</root>

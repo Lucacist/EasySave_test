@@ -1,0 +1,11 @@
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\bin\Debug\net8.0\EasyLog.deps.json
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\bin\Debug\net8.0\EasyLog.dll
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\bin\Debug\net8.0\EasyLog.pdb
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.AssemblyInfoInputs.cache
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.AssemblyInfo.cs
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.csproj.CoreCompileInputs.cache
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.dll
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\net8.0\refint\EasyLog.dll
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.pdb
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\net8.0\ref\EasyLog.dll
