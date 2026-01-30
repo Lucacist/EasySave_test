@@ -1,53 +1,175 @@
-# EasySave - Version 1.0
+# EasySave - Logiciel de Sauvegarde
 
-Application de sauvegarde en ligne de commande développée en .NET 8.0, conforme au cahier des charges du livrable 1.
+Application professionnelle de sauvegarde développée en .NET 8.0 avec interface graphique moderne (WebView2).
 
 ## 📋 Table des matières
 
 - [Vue d'ensemble](#vue-densemble)
+- [Versions](#versions)
 - [Architecture du projet](#architecture-du-projet)
-- [Design Patterns](#design-patterns)
+- [Fonctionnalités](#fonctionnalités)
 - [Installation](#installation)
 - [Utilisation](#utilisation)
-- [Format des fichiers](#format-des-fichiers)
-- [Conformité aux exigences](#conformité-aux-exigences)
-- [Gestion des erreurs](#gestion-des-erreurs)
-- [Limitations](#limitations)
-- [Évolutions futures](#évolutions-futures)
+- [Roadmap](#roadmap)
 
 ---
 
 ## 🎯 Vue d'ensemble
 
-EasySave est une solution de sauvegarde professionnelle permettant de créer et d'exécuter jusqu'à 5 travaux de sauvegarde (complète ou différentielle) vers des destinations locales, externes ou réseau. L'application génère des fichiers de logs journaliers et un fichier d'état temps réel au format JSON.
+EasySave est une solution de sauvegarde professionnelle permettant de créer et d'exécuter des travaux de sauvegarde (complète ou différentielle) vers des destinations locales, externes ou réseau. L'application génère des fichiers de logs et un fichier d'état temps réel au format JSON.
 
-### Fonctionnalités principales
+---
 
-- ✅ Création de jusqu'à 5 travaux de sauvegarde
+## 📦 Versions
+
+### Version 2.0 (En cours de développement) 🚧
+
+**Interface Graphique**
+- ✅ Interface moderne avec WebView2 (HTML/CSS/JavaScript)
+- ✅ Design responsive avec dégradé violet/bleu
+- ✅ Formulaire de création de tâches intuitif
+- ✅ Liste des tâches avec cartes visuelles
+
+**Fonctionnalités principales**
+- ✅ Nombre de travaux illimité (vs 5 en v1.0)
 - ✅ Sauvegarde complète et différentielle
-- ✅ Interface multilingue (Français/Anglais)
-- ✅ Mode ligne de commande pour automatisation
-- ✅ Logs journaliers au format JSON (format UNC)
+- ✅ Logs journaliers au format JSON
 - ✅ Fichier d'état temps réel
-- ✅ Support disques locaux, externes et réseau
+- ✅ Multi-langues (Français/Anglais)
+- 🔄 Boutons Play/Pause/Stop (en développement)
+- ⏳ Cryptage via CryptoSoft (à venir)
+- ⏳ Détection logiciel métier (à venir)
+- ⏳ Temps de cryptage dans les logs (à venir)
+
+### Version 1.1 (Planifiée)
+
+- ⏳ Support format XML pour les logs (en plus de JSON)
+- ⏳ Choix du format dans les paramètres
+
+### Version 1.0 (Base actuelle)
+
+- ✅ Interface en ligne de commande
+- ✅ Jusqu'à 5 travaux de sauvegarde
+- ✅ Logs JSON uniquement
+- ✅ Sauvegarde mono ou séquentielle
 
 ---
 
 ## 🏗️ Architecture du projet
 
-L'application suit une architecture en **couches (N-Tier)**, facilitant la maintenance et la future migration vers MVVM (V2.0).
+L'application suit une architecture **3-tiers** modulaire et maintenable.
 
 ### Structure du projet
 
-Le projet est divisé en **2 assemblies** :
+Le projet est divisé en **3 assemblies** :
 
-#### 1. **EasyLog.dll** - Bibliothèque de journalisation réutilisable
+#### 1. **EasyLog.dll** - Bibliothèque de journalisation
 ```
 EasyLog/
 ├── Logger.cs        # Gestion de l'écriture des logs journaliers
 └── LogEntry.cs      # Modèle d'entrée de log
 ```
 
+#### 2. **EasySaveApp.dll** - Logique métier
+```
+EasySaveApp/
+├── Models/
+│   ├── BackupJob.cs      # Modèle de travail de sauvegarde
+│   └── BackupType.cs     # Énumération (Full/Differential)
+├── Services/
+│   └── JobService.cs     # Gestion des travaux (CRUD + Execute)
+├── Strategies/
+│   ├── IBackupStrategy.cs              # Interface Strategy Pattern
+│   ├── FullBackupStrategy.cs           # Stratégie complète
+│   ├── DifferentialBackupStrategy.cs   # Stratégie différentielle
+│   └── BackupStrategyFactory.cs        # Factory Pattern
+├── Resources/
+│   ├── Messages.resx     # Traductions françaises
+│   └── Messages.fr.resx  # Traductions anglaises
+└── Program.cs            # Point d'entrée CLI (v1.0)
+```
+
+#### 3. **EasySaveGUI.exe** - Interface graphique (v2.0)
+```
+EasySaveGUI/
+├── Form1.cs              # Fenêtre principale WinForms
+├── wwwroot/
+│   └── index.html        # Interface WebView2 moderne
+└── EasySaveGUI.csproj    # Projet WinForms + WebView2
+```
+
+### Technologies utilisées
+
+- **.NET 8.0** - Framework principal
+- **WinForms** - Conteneur de fenêtre
+- **WebView2** - Moteur de rendu HTML/CSS/JavaScript
+- **Strategy Pattern** - Gestion des types de sauvegarde
+- **Factory Pattern** - Création des stratégies
+- **Singleton Pattern** - JobService unique
+
+---
+
+## ✨ Fonctionnalités
+
+### ✅ Implémentées (v2.0)
+
+1. **Interface Graphique Moderne**
+   - Interface HTML/CSS responsive
+   - Communication JavaScript ↔ C# via WebView2
+   - Design violet/bleu professionnel
+
+2. **Gestion des Travaux**
+   - Création illimitée de travaux
+   - Types : Complète / Différentielle
+   - Affichage en temps réel (actualisation 500ms)
+   - Barres de progression visuelles
+
+3. **Système de Logs**
+   - Logs journaliers JSON (format UNC)
+   - Fichier d'état temps réel (state.json)
+   - DLL réutilisable (EasyLog)
+
+4. **Multi-langues**
+   - Français / Anglais
+   - Fichiers .resx
+
+5. **Mode CLI**
+   - EasySaveApp conserve l'interface console v1.0
+   - Compatible scripts et automatisation
+
+### 🔄 En développement
+
+1. **Contrôles d'exécution**
+   - ▶ Play : Lancer une sauvegarde
+   - ⏸ Pause : Mettre en pause
+   - ⏯ Resume : Reprendre
+   - ■ Stop : Annuler
+
+### ⏳ Roadmap v2.0
+
+1. **Cryptage CryptoSoft**
+   - Appel au logiciel CryptoSoft.exe
+   - Cryptage sélectif par extension (.docx, .pdf, etc.)
+   - Paramètres utilisateur pour extensions à crypter
+
+2. **Temps de cryptage**
+   - Ajout dans LogEntry : `EncryptionTime` (ms)
+   - 0 = pas de cryptage
+   - >0 = temps en ms
+   - <0 = code erreur
+
+3. **Détection logiciel métier**
+   - Bloquer sauvegarde si processus spécifique détecté
+   - Paramètre : nom du processus (ex: calc.exe)
+   - Log de l'arrêt
+
+### ⏳ Roadmap v1.1
+
+1. **Format XML**
+   - Support logs XML en plus de JSON
+   - Choix utilisateur dans les paramètres
+
+---
 **Responsabilités :**
 - Écriture des logs journaliers au format JSON
 - Un fichier par jour (`YYYY-MM-DD.json`)
@@ -218,14 +340,121 @@ job.OnProgress += (sender, e) => { this.SaveState(allJobs); };
 
 ### Prérequis
 
-- .NET 8.0 SDK ou Runtime
-- Windows (testé sur Windows 10/11)
+- .NET 8.0 SDK ([Télécharger](https://dotnet.microsoft.com/download/dotnet/8.0))
+- Windows 10/11 (pour WebView2)
+- WebView2 Runtime (généralement préinstallé sur Windows 11)
 
 ### Compilation depuis les sources
 
 ```powershell
 # Cloner le projet
-git clone <url-du-repo>
+git clone https://github.com/votre-repo/EasySave.git
+cd EasySave
+
+# Compiler tous les projets
+dotnet build
+
+# Lancer l'interface graphique (v2.0)
+cd EasySaveGUI
+dotnet run
+
+# OU lancer la CLI (v1.0 - compatible)
+cd EasySaveApp
+dotnet run
+```
+
+### Exécuter directement
+
+```powershell
+# Après compilation, l'exécutable se trouve dans:
+EasySaveGUI\bin\Debug\net8.0-windows\EasySaveGUI.exe
+```
+
+---
+
+## 💻 Utilisation
+
+### Interface Graphique (v2.0)
+
+1. **Créer une tâche**
+   - Remplir le formulaire en haut : Nom, Type, Source, Destination
+   - Cliquer sur "Ajouter la tâche"
+
+2. **Lancer une sauvegarde**
+   - Cliquer sur le bouton ▶ **Lancer** de la tâche
+   - La progression s'affiche en temps réel
+
+3. **Contrôler l'exécution** (en développement)
+   - ⏸ **Pause** : Mettre en pause
+   - ⏯ **Reprendre** : Continuer après pause
+   - ■ **Annuler** : Arrêter définitivement
+
+### Interface CLI (v1.0 - toujours disponible)
+
+```powershell
+cd EasySaveApp
+dotnet run
+
+# Menu interactif:
+# 1 - Créer un nouveau travail
+# 2 - Afficher tous les travaux
+# 3 - Exécuter un travail
+# 4 - Exécuter tous les travaux
+# 5 - Quitter
+```
+
+### Fichiers générés
+
+**Logs journaliers** (un par jour)
+```
+%APPDATA%\EasySave\logs\log_30-01-2026.json
+```
+
+**État en temps réel**
+```
+%APPDATA%\EasySave\state.json
+```
+
+Exemple `state.json`:
+```json
+[
+  {
+    "Name": "Sauvegarde Documents",
+    "SourceDirectory": "C:\\Users\\Documents",
+    "TargetDirectory": "D:\\Backups",
+    "Type": 0,
+    "State": "Active",
+    "Progress": 45,
+    "TotalFilesSize": 1048576000,
+    "TotalFilesCount": 150,
+    "FilesItemsLeft": 82,
+    "CurrentSourceFile": "C:\\Users\\Documents\\rapport.docx"
+  }
+]
+```
+
+---
+
+## 📊 Comparaison des versions
+
+| Fonction | Version 1.0 | Version 1.1 | Version 2.0 |
+|----------|-------------|-------------|-------------|
+| Interface Graphique | Console | Console | ✅ Graphique (WebView2) |
+| Multi-langues | ✅ FR/EN | ✅ FR/EN | ✅ FR/EN |
+| Travaux de sauvegarde | Limité à 5 | Limité à 5 | ✅ Illimité |
+| Fichier Log journalier | ✅ JSON | ✅ JSON + XML | ✅ JSON (XML v1.1) |
+| Temps de cryptage dans log | ❌ | ❌ | 🔄 (v2.0) |
+| Utilisation DLL pour log | ✅ | ✅ | ✅ |
+| Fichier État | ✅ | ✅ | ✅ |
+| Type de sauvegarde | Mono/Séquentielle | Mono/Séquentielle | Mono/Séquentielle |
+| Détection logiciel métier | ❌ | ❌ | 🔄 (v2.0) |
+| Ligne de commande | ✅ | ✅ | ✅ (compatible) |
+| Cryptage CryptoSoft | ❌ | ❌ | 🔄 (v2.0) |
+| Boutons Play/Pause/Stop | ❌ | ❌ | 🔄 (v2.0) |
+
+**Légende:** ✅ Implémenté | 🔄 En développement | ❌ Non disponible
+
+---
 cd EasySave
 
 # Compiler la solution

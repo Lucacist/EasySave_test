@@ -1,0 +1,47 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:EasySaveGUI.ViewModels"
+        xmlns:models="using:EasySaveApp.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="EasySaveGUI.Views.MainWindow"
+        Title="EasySave - Gestionnaire de Sauvegardes"
+        Width="900" Height="600">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <StackPanel Margin="20">
+        <TextBlock Text="Mes Travaux de Sauvegarde" 
+                   FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
+        
+        <ListBox ItemsSource="{Binding BackupJobs}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Border BorderBrush="#33000000" BorderThickness="0,0,0,1" Padding="5">
+                        <Grid ColumnDefinitions="150, 100, 100, 100, *">
+                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="Bold" VerticalAlignment="Center"/>
+                    
+                            <TextBlock Grid.Column="1" Text="{Binding Type}" VerticalAlignment="Center"/>
+                    
+                            <TextBlock Grid.Column="2" Text="{Binding State}" VerticalAlignment="Center" Foreground="Gray"/>
+                    
+                            <StackPanel Grid.Column="3" VerticalAlignment="Center" Margin="0,0,10,0">
+                                <TextBlock Text="{Binding Progress, StringFormat={}{0}%}" HorizontalAlignment="Center" FontSize="10"/>
+                                <ProgressBar Value="{Binding Progress}" Maximum="100" Height="4"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="4" 
+                                    Content="▶ Lancer" 
+                                    Padding="10,2"
+                                    Command="{Binding $parent[Window].DataContext.ExecuteJobCommand}"
+                                    CommandParameter="{Binding}" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </StackPanel>
+</Window>
