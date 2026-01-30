@@ -19,6 +19,7 @@ export function JobCard({ job, onExecute, onPause, onResume, onCancel }: JobCard
       case 'active': return 'default';
       case 'paused': return 'secondary';
       case 'completed': return 'outline';
+      case 'cancelled': return 'destructive';
       case 'error': return 'destructive';
       default: return 'outline';
     }
@@ -38,6 +39,8 @@ export function JobCard({ job, onExecute, onPause, onResume, onCancel }: JobCard
 
   const isPaused = job.State.toLowerCase() === 'paused';
   const isActive = job.State.toLowerCase() === 'active';
+  const isCancelled = job.State.toLowerCase() === 'cancelled';
+  const isIdle = job.State.toLowerCase() === 'idle';
   const isCompleted = job.State.toLowerCase() === 'completed';
 
   return (
@@ -92,7 +95,7 @@ export function JobCard({ job, onExecute, onPause, onResume, onCancel }: JobCard
         )}
 
         <div className="flex gap-2 pt-2">
-          {!isActive && !isPaused && !isCompleted && (
+          {(isIdle || isCancelled || isCompleted) && (
             <Button size="sm" onClick={() => onExecute(job.Name)} className="flex-1">
               <Play className="w-4 h-4 mr-1" />
               Lancer

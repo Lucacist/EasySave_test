@@ -28,6 +28,10 @@ public class BackupJob
     // L'événement auquel le JobService va s'abonner
     public event EventHandler<ProgressEventArgs>? OnProgress;
     
+    // Mécanismes de contrôle pour Pause/Resume/Cancel
+    private ManualResetEventSlim pauseEvent = new ManualResetEventSlim(true);
+    private CancellationTokenSource? cancellationTokenSource;
+    
     // Constructeur parameterless pour la désérialisation JSON
     public BackupJob()
     {
@@ -46,31 +50,98 @@ public class BackupJob
         Type = type; 
         State = "Idle";
     }
+    
+    public void Pause()
+    {
+        if (State == "Active")
+        {
+            pauseEvent.Reset(); // Bloque l'exécution
+            State = "Paused";
+            NotifyProgress();
+        }
+    }
+    
+    public void Resume()
+    {
+        if (State == "Paused")
+        {
+            pauseEvent.Set(); // Reprend l'exécution
+            State = "Active";
+            NotifyProgress();
+        }
+    }
+    
+    public void Cancel()
+    {
+        cancellationTokenSource?.Cancel();
+        State = "Cancelled";
+        NotifyProgress();
+    }
 
     public void Execute()
     {
-        if (Directory.Exists(SourceDirectory))
+        // Réinitialiser l'état si le job est complété ou annulé
+        if (State == "Completed" || State == "Cancelled")
         {
-            CalculateStatistics(SourceDirectory);
-            if (TotalFilesCount == 0) return;
-
-            State = "Active";
-            IBackupStrategy strategy = BackupStrategyFactory.GetStrategy(this.Type);
-
-            CopyAll(SourceDirectory, TargetDirectory, strategy);
-        
             State = "Idle";
-            Progress = 100;
-            NotifyProgress(); // Alerte de fin
+            Progress = 0;
+            FilesItemsLeft = 0;
+            FilesSizeLeft = 0;
+            CurrentSourceFile = string.Empty;
+            CurrentTargetFile = string.Empty;
+        }
+        
+        cancellationTokenSource = new CancellationTokenSource();
+        var token = cancellationTokenSource.Token;
+        
+        try
+        {
+            if (Directory.Exists(SourceDirectory))
+            {
+                CalculateStatistics(SourceDirectory);
+                if (TotalFilesCount == 0) return;
+
+                State = "Active";
+                IBackupStrategy strategy = BackupStrategyFactory.GetStrategy(this.Type);
+
+                CopyAll(SourceDirectory, TargetDirectory, strategy, token);
+            
+                if (!token.IsCancellationRequested)
+                {
+                    State = "Completed";
+                    Progress = 100;
+                }
+                NotifyProgress();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            State = "Cancelled";
+            NotifyProgress();
+        }
+        finally
+        {
+            cancellationTokenSource?.Dispose();
+            cancellationTokenSource = null;
         }
     }
-    private void CopyAll(string sourcePath, string targetPath, IBackupStrategy strategy)
+    
+    private void CopyAll(string sourcePath, string targetPath, IBackupStrategy strategy, CancellationToken token)
     {
         Directory.CreateDirectory(targetPath);
         EasyLog.Logger logger = new EasyLog.Logger();
 
         foreach (string filePath in Directory.GetFiles(sourcePath))
         {
+            // Vérifier l'annulation
+            token.ThrowIfCancellationRequested();
+            
+            // Attendre si en pause
+            pauseEvent.Wait(token);
+            
+            // DÉLAI TEMPORAIRE POUR TESTER PAUSE (à retirer en production)
+            Thread.Sleep(200); // 200ms par fichier
+            
             string fileName = Path.GetFileName(filePath);
             string destFile = Path.Combine(targetPath, fileName);
             FileInfo sourceFile = new FileInfo(filePath);
@@ -114,8 +185,9 @@ public class BackupJob
 
         foreach (string directoryPath in Directory.GetDirectories(sourcePath))
         {
+            token.ThrowIfCancellationRequested();
             string destDirectory = Path.Combine(targetPath, Path.GetFileName(directoryPath));
-            CopyAll(directoryPath, destDirectory, strategy);
+            CopyAll(directoryPath, destDirectory, strategy, token);
         }
     }
     

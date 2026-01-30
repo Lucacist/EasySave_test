@@ -10,6 +10,9 @@ namespace EasySaveGUI;
 [ComVisible(true)]
 public class Bridge
 {
+    // Dictionnaire pour garder les références aux jobs en cours d'exécution
+    private static Dictionary<string, BackupJob> runningJobs = new Dictionary<string, BackupJob>();
+
     public string GetJobs()
     {
         var jobs = JobService.Instance.LoadState();
@@ -30,23 +33,42 @@ public class Bridge
         var job = jobs.FirstOrDefault(j => j.Name == name);
         if (job != null)
         {
+            // Stocker la référence du job en cours
+            runningJobs[name] = job;
+            
             await Task.Run(() => JobService.Instance.ExecuteJob(job, jobs));
+            
+            // Retirer la référence une fois terminé
+            runningJobs.Remove(name);
         }
     }
 
     public void PauseJob(string name)
     {
-        // TODO: Implement pause functionality
+        // Utiliser la référence du job en cours
+        if (runningJobs.TryGetValue(name, out var job))
+        {
+            job.Pause();
+        }
     }
 
     public void ResumeJob(string name)
     {
-        // TODO: Implement resume functionality
+        // Utiliser la référence du job en cours
+        if (runningJobs.TryGetValue(name, out var job))
+        {
+            job.Resume();
+        }
     }
 
     public void CancelJob(string name)
     {
-        // TODO: Implement cancel functionality
+        // Utiliser la référence du job en cours
+        if (runningJobs.TryGetValue(name, out var job))
+        {
+            job.Cancel();
+            runningJobs.Remove(name);
+        }
     }
 }
 

@@ -36,7 +36,10 @@ EasySave est une solution de sauvegarde professionnelle permettant de créer et 
 - ✅ Logs journaliers au format JSON
 - ✅ Fichier d'état temps réel
 - ✅ Multi-langues (Français/Anglais)
-- 🔄 Boutons Play/Pause/Stop (en développement)
+- ✅ **Boutons Play/Pause/Resume/Stop fonctionnels**
+- ✅ **React + TypeScript + Vite pour l'interface**
+- ✅ **shadcn/ui + Tailwind CSS pour le design moderne**
+- ✅ **Relance des jobs terminés**
 - ⏳ Cryptage via CryptoSoft (à venir)
 - ⏳ Détection logiciel métier (à venir)
 - ⏳ Temps de cryptage dans les logs (à venir)
@@ -92,20 +95,41 @@ EasySaveApp/
 #### 3. **EasySaveGUI.exe** - Interface graphique (v2.0)
 ```
 EasySaveGUI/
-├── Form1.cs              # Fenêtre principale WinForms
-├── wwwroot/
-│   └── index.html        # Interface WebView2 moderne
-└── EasySaveGUI.csproj    # Projet WinForms + WebView2
+├── Form1.cs              # Fenêtre principale WinForms + Bridge C#/JS
+├── ui/                   # Projet React + TypeScript + Vite
+│   ├── src/
+│   │   ├── App.tsx                 # Composant principal React
+│   │   ├── components/
+│   │   │   ├── JobCard.tsx         # Carte de job avec boutons Play/Pause/Resume/Cancel
+│   │   │   ├── AddJobForm.tsx      # Formulaire de création de job
+│   │   │   └── ui/                 # Composants shadcn/ui (Card, Button, Progress, Badge, Input)
+│   │   └── types/
+│   │       └── bridge.ts           # Types TypeScript pour le bridge C#/JS
+│   ├── package.json      # Dépendances npm (React, Vite, Tailwind, shadcn/ui)
+│   ├── vite.config.ts    # Configuration Vite
+│   └── tailwind.config.js # Configuration Tailwind CSS
+├── wwwroot/              # Sortie Vite (dist/) copiée par MSBuild
+│   └── index.html        # Interface compilée chargée par WebView2
+└── EasySaveGUI.csproj    # Projet WinForms + WebView2 + PreBuildEvent React
 ```
 
 ### Technologies utilisées
 
 - **.NET 8.0** - Framework principal
+- **C# 12** - Langage backend
 - **WinForms** - Conteneur de fenêtre
-- **WebView2** - Moteur de rendu HTML/CSS/JavaScript
+- **WebView2** - Moteur de rendu Chromium embarqué
+- **React 18.3.1** - Framework UI frontend
+- **TypeScript 5.6.3** - Typage statique JavaScript
+- **Vite 6.0.3** - Bundler et dev server ultra-rapide
+- **Tailwind CSS 3.4.17** - Framework CSS utility-first
+- **shadcn/ui** - Bibliothèque de composants avec Radix UI
+- **lucide-react 0.460.0** - Icônes modernes
 - **Strategy Pattern** - Gestion des types de sauvegarde
 - **Factory Pattern** - Création des stratégies
 - **Singleton Pattern** - JobService unique
+- **Observer Pattern** - Événements OnProgress
+- **Bridge Pattern** - Communication C# ↔ JavaScript via COM
 
 ---
 
@@ -139,11 +163,7 @@ EasySaveGUI/
 
 ### 🔄 En développement
 
-1. **Contrôles d'exécution**
-   - ▶ Play : Lancer une sauvegarde
-   - ⏸ Pause : Mettre en pause
-   - ⏯ Resume : Reprendre
-   - ■ Stop : Annuler
+_Aucune fonctionnalité en développement actuellement_
 
 ### ⏳ Roadmap v2.0
 
@@ -275,64 +295,319 @@ classDiagram
 
 ## 🎨 Design Patterns
 
-### 1. Singleton (Patron de Création)
+L'architecture d'EasySave utilise **7 design patterns** reconnus pour garantir maintenabilité, extensibilité et testabilité.
 
-**Classe :** `JobService`
+---
 
-**Justification :** Garantir qu'il n'existe qu'une seule instance du service gérant les fichiers (`state.json`). Cela évite les conflits d'accès concurrents et centralise la logique de chargement/sauvegarde.
+### 1. **Strategy Pattern** (Patron de Comportement) 🎯
 
+**Localisation :** `EasySaveApp/Strategies/`
+
+**Fichiers concernés :**
+- `IBackupStrategy.cs` - Interface définissant le contrat
+- `FullBackupStrategy.cs` - Implémentation sauvegarde complète
+- `DifferentialBackupStrategy.cs` - Implémentation sauvegarde différentielle
+
+**Rôle :** Encapsuler les algorithmes de décision de copie de fichiers. Le `BackupJob` ne sait pas *comment* décider s'il doit copier un fichier, il délègue cette responsabilité à une stratégie interchangeable.
+
+**Avantages :**
+- **Open/Closed Principle** : Ajouter un nouveau type de backup (incrémental, compressé) sans modifier le code existant
+- **Testabilité** : Chaque stratégie peut être testée indépendamment
+- **Flexibilité** : Changement de stratégie à l'exécution
+
+**Code exemple :**
 ```csharp
-public static JobService Instance => _instance ??= new JobService();
-```
-
-### 2. Strategy (Patron de Comportement)
-
-**Classes :** `IBackupStrategy`, `FullBackupStrategy`, `DifferentialBackupStrategy`
-
-**Justification :** Isoler l'algorithme de décision de copie. Le `BackupJob` ne sait pas *comment* décider s'il doit copier un fichier ; il délègue cette tâche à une stratégie. Cela permet d'ajouter de nouveaux types de backup (ex: incrémental, compressé) sans modifier le code existant.
-
-**Principe SOLID respecté :** Open/Closed Principle
-
-```csharp
-// Sauvegarde complète : copie tout
-public bool ShouldCopy(FileInfo source, FileInfo target) => true;
-
-// Sauvegarde différentielle : copie si modifié
-public bool ShouldCopy(FileInfo source, FileInfo target) 
-    => !target.Exists || source.LastWriteTime > target.LastWriteTime;
-```
-
-### 3. Factory (Patron de Création)
-
-**Classe :** `BackupStrategyFactory`
-
-**Justification :** Simplifier la création des stratégies. On passe un `BackupType` (Enum) et la fabrique retourne l'objet approprié.
-
-```csharp
-public static IBackupStrategy GetStrategy(BackupType type)
+// Sauvegarde complète : copie tous les fichiers
+public class FullBackupStrategy : IBackupStrategy
 {
-    return type switch
-    {
-        BackupType.Full => new FullBackupStrategy(),
-        BackupType.Differential => new DifferentialBackupStrategy(),
-        _ => throw new ArgumentException("Unknown backup type")
-    };
+    public bool ShouldCopy(FileInfo source, FileInfo target) => true;
+}
+
+// Sauvegarde différentielle : copie uniquement les fichiers modifiés
+public class DifferentialBackupStrategy : IBackupStrategy
+{
+    public bool ShouldCopy(FileInfo source, FileInfo target) 
+        => !target.Exists || source.LastWriteTime > target.LastWriteTime;
 }
 ```
 
-### 4. Observer (Patron de Comportement)
-
-**Implémentation :** Événement `OnProgress` dans `BackupJob`
-
-**Justification :** Découpler totalement le moteur de sauvegarde du système de sauvegarde d'état. Le job "notifie" ses progrès, et le service (l'observateur) réagit en écrivant dans le JSON. C'est la base de la communication temps réel demandée.
-
+**Utilisation dans BackupJob :**
 ```csharp
-// BackupJob déclenche l'événement
-OnProgress?.Invoke(this, new ProgressEventArgs { Job = this });
-
-// JobService s'abonne
-job.OnProgress += (sender, e) => { this.SaveState(allJobs); };
+var strategy = BackupStrategyFactory.GetStrategy(Type);
+if (strategy.ShouldCopy(sourceFile, targetFile))
+{
+    File.Copy(sourceFile.FullName, targetFile.FullName, true);
+}
 ```
+
+---
+
+### 2. **Factory Pattern** (Patron de Création) 🏭
+
+**Localisation :** `EasySaveApp/Strategies/BackupStrategyFactory.cs`
+
+**Rôle :** Centraliser la logique de création des objets `IBackupStrategy`. Le client demande une stratégie via un enum `BackupType` et la fabrique retourne l'instance appropriée.
+
+**Avantages :**
+- **Encapsulation** : Logique de création isolée
+- **Simplicité** : Le client n'a pas besoin de connaître les classes concrètes
+- **Maintenabilité** : Ajout d'un nouveau type dans un seul endroit
+
+**Code :**
+```csharp
+public static class BackupStrategyFactory
+{
+    public static IBackupStrategy GetStrategy(BackupType type)
+    {
+        return type switch
+        {
+            BackupType.Full => new FullBackupStrategy(),
+            BackupType.Differential => new DifferentialBackupStrategy(),
+            _ => throw new ArgumentException($"Unknown backup type: {type}")
+        };
+    }
+}
+```
+
+---
+
+### 3. **Singleton Pattern** (Patron de Création) 🔒
+
+**Localisation :** `EasySaveApp/Services/JobService.cs`
+
+**Rôle :** Garantir qu'il existe une seule instance du service gérant les fichiers JSON (`state.json`). Évite les conflits d'accès concurrents et centralise la gestion des jobs.
+
+**Avantages :**
+- **Cohérence** : Un seul point d'accès aux données
+- **Performance** : Instance unique, pas de recréation
+- **Thread-safety** : Contrôle de l'accès concurrent aux fichiers
+
+**Code :**
+```csharp
+public class JobService
+{
+    private static JobService? _instance;
+    private static readonly object _lock = new();
+
+    public static JobService Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                lock (_lock)
+                {
+                    _instance ??= new JobService();
+                }
+            }
+            return _instance;
+        }
+    }
+
+    private JobService() { } // Constructeur privé
+}
+```
+
+---
+
+### 4. **Observer Pattern** (Patron de Comportement) 👁️
+
+**Localisation :** `EasySaveApp/Models/BackupJob.cs` + `EasySaveApp/Services/JobService.cs`
+
+**Rôle :** Découpler le moteur de sauvegarde (`BackupJob`) du système de persistance (`JobService`). Le job notifie ses changements d'état via un événement, et les observateurs (JobService, GUI) réagissent automatiquement.
+
+**Avantages :**
+- **Couplage faible** : BackupJob ne connaît pas ses observateurs
+- **Extensibilité** : Ajouter facilement de nouveaux observateurs (UI, logs, notifications)
+- **Temps réel** : Mise à jour instantanée du `state.json`
+
+**Code :**
+```csharp
+// BackupJob.cs - Publisher
+public event EventHandler? OnProgress;
+
+private void NotifyProgress()
+{
+    OnProgress?.Invoke(this, EventArgs.Empty);
+}
+
+// JobService.cs - Subscriber
+job.OnProgress += (sender, e) =>
+{
+    SaveState(allJobs); // Mise à jour automatique du state.json
+};
+```
+
+**Flux de données :**
+```
+BackupJob copie un fichier
+   ↓
+NotifyProgress() déclenche OnProgress
+   ↓
+JobService.SaveState() écrit dans state.json
+   ↓
+React App (useEffect polling 500ms) affiche la progression
+```
+
+---
+
+### 5. **Bridge Pattern** (Patron Structurel) 🌉
+
+**Localisation :** `EasySaveGUI/Form1.cs` (classe `Bridge`)
+
+**Rôle :** Séparer l'abstraction (interface JavaScript) de l'implémentation (logique C#). Permet à React de communiquer avec le backend .NET via WebView2 sans couplage fort.
+
+**Avantages :**
+- **Indépendance** : Frontend et backend évoluent indépendamment
+- **Réutilisabilité** : Le backend peut être utilisé avec d'autres UI (CLI, WPF, Blazor)
+- **Testabilité** : Tester le backend sans UI
+
+**Code C# (Bridge) :**
+```csharp
+[ComVisible(true)]
+public class Bridge
+{
+    public string GetJobs()
+    {
+        var jobs = JobService.Instance.LoadState();
+        return JsonSerializer.Serialize(jobs);
+    }
+
+    public void ExecuteJob(string name)
+    {
+        // Logique d'exécution...
+    }
+}
+
+// Exposition à JavaScript
+webView.CoreWebView2.AddHostObjectToScript("bridge", new Bridge());
+```
+
+**Code TypeScript (Client) :**
+```typescript
+// Appel depuis React
+const jobs = JSON.parse(window.chrome.webview.hostObjects.bridge.GetJobs());
+window.chrome.webview.hostObjects.bridge.ExecuteJob("test2");
+```
+
+---
+
+### 6. **Repository Pattern** (Patron Architectural) 💾
+
+**Localisation :** `EasySaveApp/Services/JobService.cs`
+
+**Rôle :** Abstraire l'accès aux données (fichier JSON `state.json`). Encapsule la logique de sérialisation/désérialisation et fournit une interface CRUD claire.
+
+**Avantages :**
+- **Séparation des préoccupations** : Logique métier vs persistance
+- **Testabilité** : Mock du repository pour tests unitaires
+- **Flexibilité** : Changement de stockage (JSON → SQL, XML) sans impact sur le code métier
+
+**Méthodes exposées :**
+```csharp
+public class JobService
+{
+    // CREATE
+    public BackupJob CreateJob(string name, string source, string target, BackupType type);
+
+    // READ
+    public List<BackupJob> LoadState();
+
+    // UPDATE (via SaveState après modification)
+    public void SaveState(List<BackupJob> jobs);
+
+    // DELETE (implicite via SaveState avec liste filtrée)
+}
+```
+
+---
+
+### 7. **Facade Pattern** (Patron Structurel) 🎭
+
+**Localisation :** `EasySaveGUI/Form1.cs` (classe `Bridge`)
+
+**Rôle :** Simplifier l'interface complexe du backend pour le frontend. La classe `Bridge` expose des méthodes simples (GetJobs, AddJob, ExecuteJob) qui orchestrent plusieurs classes du backend.
+
+**Avantages :**
+- **Simplicité** : L'UI n'a besoin de connaître qu'une seule classe
+- **Réduction de la complexité** : Cache les détails d'implémentation (Strategy, Factory, Singleton)
+- **Maintenance** : Changements internes sans impact sur l'UI
+
+**Code :**
+```csharp
+public class Bridge // Facade
+{
+    public void ExecuteJob(string name)
+    {
+        // Simplifie l'appel complexe :
+        // 1. LoadState() → Singleton
+        // 2. Find job par nom
+        // 3. ExecuteJob() → Strategy + Factory + Observer
+        // 4. SaveState() → Repository
+        
+        var jobs = JobService.Instance.LoadState();
+        var job = jobs.FirstOrDefault(j => j.Name == name);
+        if (job != null)
+        {
+            JobService.Instance.ExecuteJob(job, jobs);
+        }
+    }
+}
+```
+
+**Sans Facade (complexe pour l'UI) :**
+```typescript
+// ❌ L'UI devrait connaître JobService, LoadState, ExecuteJob, Observer...
+const jobService = getJobService();
+const jobs = jobService.loadState();
+const job = jobs.find(j => j.name === "test2");
+job.onProgress.subscribe(...);
+jobService.executeJob(job, jobs);
+```
+
+**Avec Facade (simple) :**
+```typescript
+// ✅ Une seule ligne
+bridge.ExecuteJob("test2");
+```
+
+---
+
+### 📊 Résumé des Design Patterns
+
+| Pattern | Type | Fichier(s) | Rôle | Principe SOLID |
+|---------|------|------------|------|----------------|
+| **Strategy** | Comportement | `IBackupStrategy.cs`, `FullBackupStrategy.cs`, `DifferentialBackupStrategy.cs` | Algorithmes de copie interchangeables | Open/Closed |
+| **Factory** | Création | `BackupStrategyFactory.cs` | Création centralisée des stratégies | Single Responsibility |
+| **Singleton** | Création | `JobService.cs` | Instance unique du service de gestion | - |
+| **Observer** | Comportement | `BackupJob.cs` (OnProgress) | Notification temps réel des changements | Dependency Inversion |
+| **Bridge** | Structurel | `Form1.cs` (Bridge class) | Séparation abstraction C#/JS | Dependency Inversion |
+| **Repository** | Architectural | `JobService.cs` | Abstraction de la persistance JSON | Single Responsibility |
+| **Facade** | Structurel | `Form1.cs` (Bridge class) | Interface simplifiée pour l'UI | Interface Segregation |
+
+---
+
+### 🎓 Principes SOLID appliqués
+
+1. **Single Responsibility Principle (SRP)** ✅
+   - `Logger` : Uniquement écriture de logs
+   - `JobService` : Uniquement gestion de jobs
+   - `BackupJob` : Uniquement logique de sauvegarde
+
+2. **Open/Closed Principle (OCP)** ✅
+   - Ajout d'un nouveau type de backup sans modifier `BackupJob`
+   - Extension via `IBackupStrategy`
+
+3. **Liskov Substitution Principle (LSP)** ✅
+   - Toutes les implémentations de `IBackupStrategy` sont substituables
+
+4. **Interface Segregation Principle (ISP)** ✅
+   - `IBackupStrategy` : Interface minimale (1 méthode)
+   - `Bridge` : Méthodes spécifiques à l'UI
+
+5. **Dependency Inversion Principle (DIP)** ✅
+   - `BackupJob` dépend de `IBackupStrategy` (abstraction), pas des classes concrètes
+   - `Observer` permet à `BackupJob` de ne pas connaître `JobService`
 
 ---
 
@@ -351,12 +626,11 @@ job.OnProgress += (sender, e) => { this.SaveState(allJobs); };
 git clone https://github.com/votre-repo/EasySave.git
 cd EasySave
 
-# Compiler tous les projets
-dotnet build
+# Compiler tous les projets (React + .NET)
+dotnet build EasySaveGUI/EasySaveGUI.csproj
 
 # Lancer l'interface graphique (v2.0)
-cd EasySaveGUI
-dotnet run
+.\EasySaveGUI\bin\Debug\net8.0-windows\EasySaveGUI.exe
 
 # OU lancer la CLI (v1.0 - compatible)
 cd EasySaveApp
@@ -366,8 +640,19 @@ dotnet run
 ### Exécuter directement
 
 ```powershell
-# Après compilation, l'exécutable se trouve dans:
-EasySaveGUI\bin\Debug\net8.0-windows\EasySaveGUI.exe
+# Depuis la racine du projet
+.\EasySaveGUI\bin\Debug\net8.0-windows\EasySaveGUI.exe
+
+# OU avec chemin complet
+cd "C:\Users\<user>\Documents\cesi\genie_logiciel\projet\EasySave"
+.\EasySaveGUI\bin\Debug\net8.0-windows\EasySaveGUI.exe
+```
+
+### Rebuild et relance rapide
+
+```powershell
+# Tuer l'instance en cours + recompiler + relancer
+Get-Process | Where-Object { $_.ProcessName -like "*EasySave*" } | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 500; dotnet build EasySaveGUI/EasySaveGUI.csproj; cd EasySaveGUI/bin/Debug/net8.0-windows; .\EasySaveGUI.exe
 ```
 
 ---
@@ -377,17 +662,26 @@ EasySaveGUI\bin\Debug\net8.0-windows\EasySaveGUI.exe
 ### Interface Graphique (v2.0)
 
 1. **Créer une tâche**
-   - Remplir le formulaire en haut : Nom, Type, Source, Destination
+   - Remplir le formulaire en haut : Nom, Type (Complète/Différentielle), Source, Destination
    - Cliquer sur "Ajouter la tâche"
 
 2. **Lancer une sauvegarde**
-   - Cliquer sur le bouton ▶ **Lancer** de la tâche
-   - La progression s'affiche en temps réel
+   - Cliquer sur le bouton **▶ Lancer** de la tâche
+   - La progression s'affiche en temps réel (actualisation 500ms)
+   - État : **Idle** → **Active** → **Completed**
 
-3. **Contrôler l'exécution** (en développement)
-   - ⏸ **Pause** : Mettre en pause
-   - ⏯ **Reprendre** : Continuer après pause
-   - ■ **Annuler** : Arrêter définitivement
+3. **Contrôler l'exécution** ✅
+   - **⏸ Pause** : Mettre en pause la sauvegarde en cours
+   - **⏯ Reprendre** : Continuer après pause (État passe à **Paused** → **Active**)
+   - **■ Annuler** : Arrêter définitivement (État → **Cancelled**)
+   - **▶ Lancer** (sur job terminé) : Relancer une sauvegarde complétée/annulée
+
+4. **États des jobs**
+   - 🟢 **Idle** : En attente, prêt à lancer
+   - 🔵 **Active** : Sauvegarde en cours
+   - 🟡 **Paused** : En pause (peut reprendre)
+   - ✅ **Completed** : Terminé avec succès
+   - 🔴 **Cancelled** : Annulé par l'utilisateur
 
 ### Interface CLI (v1.0 - toujours disponible)
 
@@ -439,7 +733,7 @@ Exemple `state.json`:
 
 | Fonction | Version 1.0 | Version 1.1 | Version 2.0 |
 |----------|-------------|-------------|-------------|
-| Interface Graphique | Console | Console | ✅ Graphique (WebView2) |
+| Interface Graphique | Console | Console | ✅ Graphique (WebView2 + React) |
 | Multi-langues | ✅ FR/EN | ✅ FR/EN | ✅ FR/EN |
 | Travaux de sauvegarde | Limité à 5 | Limité à 5 | ✅ Illimité |
 | Fichier Log journalier | ✅ JSON | ✅ JSON + XML | ✅ JSON (XML v1.1) |
@@ -450,7 +744,9 @@ Exemple `state.json`:
 | Détection logiciel métier | ❌ | ❌ | 🔄 (v2.0) |
 | Ligne de commande | ✅ | ✅ | ✅ (compatible) |
 | Cryptage CryptoSoft | ❌ | ❌ | 🔄 (v2.0) |
-| Boutons Play/Pause/Stop | ❌ | ❌ | 🔄 (v2.0) |
+| Boutons Play/Pause/Resume/Stop | ❌ | ❌ | ✅ Fonctionnel |
+| Relance jobs terminés | ❌ | ❌ | ✅ Fonctionnel |
+| Framework UI | - | - | React + TypeScript + shadcn/ui |
 
 **Légende:** ✅ Implémenté | 🔄 En développement | ❌ Non disponible
 
