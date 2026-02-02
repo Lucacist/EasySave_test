@@ -22,3 +22,4 @@ C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasySaveApp\obj\Deb
 C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasySaveApp\obj\Debug\net8.0\EasySaveApp.pdb
 C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasySaveApp\obj\Debug\net8.0\EasySaveApp.genruntimeconfig.cache
 C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasySaveApp\obj\Debug\net8.0\ref\EasySaveApp.dll
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasySaveApp\obj\Debug\net8.0\EasySaveApp.sourcelink.json

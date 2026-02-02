@@ -9,3 +9,4 @@ C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\n
 C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\net8.0\refint\EasyLog.dll
 C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.pdb
 C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\net8.0\ref\EasyLog.dll
+C:\Users\lucac\Documents\cesi\genie_logiciel\projet\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.sourcelink.json

@@ -28,6 +28,9 @@ public class BackupJob
     // L'événement auquel le JobService va s'abonner
     public event EventHandler<ProgressEventArgs>? OnProgress;
     
+    // Logger partagé pour tous les fichiers du job (évite de créer une instance à chaque fichier)
+    private readonly EasyLog.Logger _logger;
+    
     // Constructeur parameterless pour la désérialisation JSON
     public BackupJob()
     {
@@ -36,6 +39,7 @@ public class BackupJob
         TargetDirectory = string.Empty;
         Type = BackupType.Full;
         State = "Idle";
+        _logger = new EasyLog.Logger();
     }
     
     public BackupJob(string name, string source, string target, BackupType type) 
@@ -45,29 +49,45 @@ public class BackupJob
         TargetDirectory = target; 
         Type = type; 
         State = "Idle";
+        _logger = new EasyLog.Logger();
     }
 
     public void Execute()
     {
-        if (Directory.Exists(SourceDirectory))
+        // Validation des chemins
+        if (string.IsNullOrWhiteSpace(SourceDirectory))
         {
-            CalculateStatistics(SourceDirectory);
-            if (TotalFilesCount == 0) return;
-
-            State = "Active";
-            IBackupStrategy strategy = BackupStrategyFactory.GetStrategy(this.Type);
-
-            CopyAll(SourceDirectory, TargetDirectory, strategy);
-        
-            State = "Idle";
-            Progress = 100;
-            NotifyProgress(); // Alerte de fin
+            Console.WriteLine($"Error: Source directory is empty for job '{Name}'");
+            return;
         }
+        
+        if (!Directory.Exists(SourceDirectory))
+        {
+            Console.WriteLine($"Error: Source directory does not exist: {SourceDirectory}");
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(TargetDirectory))
+        {
+            Console.WriteLine($"Error: Target directory is empty for job '{Name}'");
+            return;
+        }
+        
+        CalculateStatistics(SourceDirectory);
+        if (TotalFilesCount == 0) return;
+
+        State = "Active";
+        IBackupStrategy strategy = BackupStrategyFactory.GetStrategy(this.Type);
+
+        CopyAll(SourceDirectory, TargetDirectory, strategy);
+    
+        State = "Idle";
+        Progress = 100;
+        NotifyProgress(); // Alerte de fin
     }
     private void CopyAll(string sourcePath, string targetPath, IBackupStrategy strategy)
     {
         Directory.CreateDirectory(targetPath);
-        EasyLog.Logger logger = new EasyLog.Logger();
 
         foreach (string filePath in Directory.GetFiles(sourcePath))
         {
@@ -78,28 +98,36 @@ public class BackupJob
             
             this.CurrentSourceFile = filePath;
             this.CurrentTargetFile = destFile;
-            this.LastActionTimestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+            this.LastActionTimestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
             // Utilisation du Polymorphisme
             if (strategy.ShouldCopy(sourceFile, targetFile))
             {
                 Stopwatch sw = Stopwatch.StartNew();
+                long transferTime;
+                
                 try 
                 {
                     File.Copy(filePath, destFile, true);
                     sw.Stop();
-
-                    logger.WriteLog(new EasyLog.LogEntry {
-                        Timestamp = this.LastActionTimestamp,
-                        BackupName = this.Name,
-                        // Utilisation du format UNC ici
-                        SourceFilePath = ToUNCPath(filePath), 
-                        TargetFilePath = ToUNCPath(destFile),
-                        FileSize = sourceFile.Length,
-                        FileTransferTime = sw.ElapsedMilliseconds
-                    });
+                    transferTime = sw.ElapsedMilliseconds;
                 }
-                catch (Exception ex) { Console.WriteLine($"Error: {ex.Message}"); }
+                catch (Exception ex) 
+                { 
+                    sw.Stop();
+                    transferTime = -1; // Temps négatif = erreur (requis par cahier des charges)
+                    Console.WriteLine($"Error copying {fileName}: {ex.Message}");
+                }
+                
+                // Log dans tous les cas (succès ou erreur)
+                _logger.WriteLog(new EasyLog.LogEntry {
+                    Timestamp = this.LastActionTimestamp,
+                    BackupName = this.Name,
+                    SourceFilePath = ToUNCPath(filePath), 
+                    TargetFilePath = ToUNCPath(destFile),
+                    FileSize = sourceFile.Length,
+                    FileTransferTime = transferTime
+                });
             }
 
             // Mise à jour des compteurs et du state.json
@@ -121,11 +149,27 @@ public class BackupJob
     
     private string ToUNCPath(string path)
     {
-        // Si c'est déjà un chemin réseau, on ne touche à rien
-        if (path.StartsWith(@"\\")) return path;
-    
-        // Sinon, on simule le format UNC : C:\ devient \\localhost\C$\
-        return path.Replace(":", "$").Insert(0, @"\\localhost\");
+        try
+        {
+            // Si c'est déjà un chemin réseau, on ne touche à rien
+            if (path.StartsWith(@"\\")) 
+                return path;
+            
+            // Récupérer le chemin absolu
+            string fullPath = Path.GetFullPath(path);
+            
+            // Convertir C:\ en \\localhost\C$\
+            if (fullPath.Length >= 2 && fullPath[1] == ':')
+            {
+                return $@"\\localhost\{fullPath[0]}${fullPath.Substring(2)}";
+            }
+            
+            return fullPath;
+        }
+        catch
+        {
+            return path; // En cas d'erreur, retourner le chemin original
+        }
     }
     
     private void NotifyProgress()
