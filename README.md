@@ -73,10 +73,22 @@ EasySaveApp/
     └── Messages.fr.resx         # Ressources FR
 ```
 
-### Diagramme de classes (UML)
+### Diagramme de classes V1.0 (UML)
+
+> **Note :** Ce diagramme représente l'architecture **actuelle** de la V1.0. Voir la section [Points de Vigilance pour la V2.0](#-points-de-vigilance-pour-la-v20-migration-mvvm) pour l'architecture cible.
 
 ```mermaid
 classDiagram
+    %% ========== POINT D'ENTRÉE ==========
+    class Program {
+        <<entry point>>
+        +Main(string[] args)
+        -ParseArguments() List~int~
+        -ShowMenu()
+        -HandleUserInput()
+    }
+
+    %% ========== MODÈLES ==========
     class BackupJob {
         +string Name
         +string SourceDirectory
@@ -99,6 +111,13 @@ classDiagram
         -CalculateStatistics()
     }
 
+    class BackupType {
+        <<enumeration>>
+        Full
+        Differential
+    }
+
+    %% ========== STRATEGIES (Pattern Strategy) ==========
     class IBackupStrategy {
         <<interface>>
         +ShouldCopy(FileInfo source, FileInfo target) bool
@@ -113,41 +132,66 @@ classDiagram
     }
 
     class BackupStrategyFactory {
-        +GetStrategy(BackupType type) IBackupStrategy$
+        <<static>>
+        +GetStrategy(BackupType type) IBackupStrategy
     }
 
+    %% ========== SERVICE (Singleton) ==========
     class JobService {
         <<Singleton>>
         -static JobService _instance
         +Instance JobService$
         +CreateJob() BackupJob
-        +DisplayJobs(List jobs)
-        +ExecuteJob(BackupJob job, List allJobs)
-        +SaveState(List jobs)
-        +LoadState() List
+        +DisplayJobs(List~BackupJob~)
+        +ExecuteJob(BackupJob job, List~BackupJob~ allJobs)
+        +SaveState(List~BackupJob~ jobs)
+        +LoadState() List~BackupJob~
+        -GetStateFilePath() string
     }
 
-    class Logger {
-        +WriteLog(LogEntry entry)
+    %% ========== DLL EXTERNE : EasyLog ==========
+    namespace EasyLog {
+        class Logger {
+            -string _logFolderPath
+            +WriteLog(LogEntry entry)
+        }
+
+        class LogEntry {
+            +string Timestamp
+            +string BackupName
+            +string SourceFilePath
+            +string TargetFilePath
+            +long FileSize
+            +long FileTransferTime
+        }
     }
 
-    class LogEntry {
-        +string Timestamp
-        +string BackupName
-        +string SourceFilePath
-        +string TargetFilePath
-        +long FileSize
-        +long FileTransferTime
-    }
-
+    %% ========== RELATIONS ==========
+    Program --> JobService : utilise
+    Program ..> BackupJob : manipule
+    
+    JobService o-- BackupJob : gère liste
+    JobService --> BackupJob : crée et exécute
+    
     BackupJob --> IBackupStrategy : utilise
-    IBackupStrategy <|-- FullBackupStrategy
-    IBackupStrategy <|-- DifferentialBackupStrategy
+    BackupJob --> BackupType : a un type
+    BackupJob --> Logger : écrit les logs
+    
+    IBackupStrategy <|.. FullBackupStrategy
+    IBackupStrategy <|.. DifferentialBackupStrategy
     BackupStrategyFactory ..> IBackupStrategy : crée
-    JobService o-- BackupJob : gère
-    BackupJob --> Logger : écrit logs
+    BackupStrategyFactory ..> BackupType : selon type
+    
     Logger --> LogEntry : écrit
 ```
+
+### ⚠️ Points d'attention dans le diagramme actuel
+
+| Élément | Problème V1 | Solution V2 |
+|---------|-------------|-------------|
+| `JobService.CreateJob()` | Contient `Console.ReadLine()` | Recevoir les paramètres en argument |
+| `JobService.DisplayJobs()` | Contient `Console.WriteLine()` | Déplacer vers `ConsoleView` |
+| `Program.cs` | Mélange orchestration + affichage | Déléguer l'affichage à `ConsoleView` |
 
 ---
 
@@ -541,6 +585,221 @@ IBackupStrategy          →  Model (inchangé)
 - 📊 Dashboard de statistiques
 - ⏰ Planification automatique (scheduler intégré)
 - 🌐 Support MacOS/Linux (.NET Multi-platform)
+
+---
+
+## ⚡ Points de Vigilance pour la V2.0 (Migration MVVM)
+
+> **Cette section documente les modifications nécessaires pour préparer la migration vers l'architecture MVVM (Version 2.0 avec interface graphique).**
+
+### 🔴 Priorité HAUTE : Séparation Affichage / Logique
+
+#### Problème actuel
+
+Dans `JobService.cs`, les méthodes `CreateJob()` et `DisplayJobs()` contiennent des appels `Console.ReadLine()` et `Console.WriteLine()`. Cela couple fortement le service à l'interface console.
+
+```csharp
+// ❌ PROBLÈME : JobService fait de l'affichage
+public BackupJob CreateJob()
+{
+    Console.Write(Resources.Messages.PromptName);  // ← Couplage UI
+    string name = Console.ReadLine() ?? "";        // ← Couplage UI
+    // ...
+}
+```
+
+#### Pourquoi c'est un problème ?
+
+- Le `JobService` devrait uniquement **gérer les données** (création, lecture, sauvegarde)
+- Il ne devrait **jamais savoir** comment afficher ou récupérer les données
+- En MVVM, le ViewModel communique avec la View via du **Data Binding**, pas via Console
+
+#### Solution à implémenter pour la V2
+
+**Créer une classe `ConsoleView`** (ou `Views/ConsoleView.cs`) qui centralise tout l'affichage :
+
+```
+EasySaveApp/
+├── Views/
+│   └── ConsoleView.cs    ← NOUVEAU : Tout l'affichage console ici
+├── Services/
+│   └── JobService.cs     ← MODIFIÉ : Plus aucun Console.Write
+```
+
+**Nouveau `JobService.cs` (sans affichage) :**
+```csharp
+public class JobService
+{
+    // ✅ CORRECT : Ne fait que de la logique métier
+    public BackupJob CreateJob(string name, string source, string target, BackupType type)
+    {
+        return new BackupJob(name, source, target, type);
+    }
+    
+    public List<BackupJob> GetAllJobs() => LoadState();
+    
+    // Plus de Console.Write ici !
+}
+```
+
+**Nouveau `ConsoleView.cs` :**
+```csharp
+public class ConsoleView
+{
+    private readonly JobService _jobService;
+    
+    public void ShowMenu() { /* Console.WriteLine... */ }
+    
+    public BackupJob PromptNewJob()
+    {
+        Console.Write("Nom: ");
+        string name = Console.ReadLine();
+        // ... récupère toutes les infos
+        return _jobService.CreateJob(name, source, target, type);
+    }
+    
+    public void DisplayJobs(List<BackupJob> jobs)
+    {
+        foreach (var job in jobs)
+            Console.WriteLine($"{job.Name} - {job.Type}");
+    }
+}
+```
+
+**Impact sur la migration V2 :**
+- Remplacer `ConsoleView` par une `WPFView` (ou Blazor, Avalonia...)
+- Le `JobService` reste **inchangé**
+- Le `BackupJob` reste **inchangé**
+
+---
+
+### 🟡 Priorité MOYENNE : Clarification du fichier state.json
+
+#### État actuel (✅ Correct)
+
+Le fichier `state.json` contient **à la fois** :
+- La **configuration** des jobs (nom, source, cible, type)
+- L'**état temps réel** (progression, fichier en cours, etc.)
+
+**C'est conforme au cahier des charges** qui montre un seul fichier avec toutes ces informations.
+
+#### Attention pour la V2
+
+Certaines IA ou architectures suggèrent de séparer en deux fichiers :
+- `config.json` → Configuration statique
+- `state.json` → État temps réel uniquement
+
+**⚠️ NE PAS SÉPARER pour la V1** - Le cahier des charges montre clairement un fichier unique.
+
+Pour la V2, on pourrait envisager cette séparation **seulement si** :
+- On veut permettre de modifier les jobs **pendant** une sauvegarde
+- On veut des performances accrues (ne pas réécrire toute la config à chaque progression)
+
+---
+
+### 🟢 Priorité BASSE : Points déjà correctement implémentés
+
+#### ✅ DLL EasyLog séparée
+Le projet `EasyLog/` est déjà une DLL distincte avec son propre namespace. Rien à changer.
+
+#### ✅ Internationalisation
+Le système de ressources `.resx` avec `CultureInfo` est la méthode standard .NET. Compatible MVVM nativement.
+
+#### ✅ Pattern Strategy
+L'implémentation actuelle est parfaite. Les stratégies sont découplées et extensibles.
+
+#### ✅ Pattern Observer
+L'événement `OnProgress` dans `BackupJob` est la base de la communication temps réel. En MVVM, on transformera cela en `INotifyPropertyChanged`.
+
+#### ✅ Parsing CLI
+La gestion des arguments en ligne de commande dans `Program.cs` est correcte. En V2, ce code pourra rester dans `Program.cs` comme point d'entrée alternatif.
+
+---
+
+### 📋 Checklist de Migration V1 → V2
+
+| Tâche | Fichier concerné | Priorité | Statut |
+|-------|------------------|----------|--------|
+| Extraire l'affichage de `CreateJob()` | `JobService.cs` | 🔴 Haute | ⬜ À faire |
+| Extraire l'affichage de `DisplayJobs()` | `JobService.cs` | 🔴 Haute | ⬜ À faire |
+| Créer `Views/ConsoleView.cs` | Nouveau fichier | 🔴 Haute | ⬜ À faire |
+| Implémenter `INotifyPropertyChanged` | `BackupJob.cs` | 🟡 Moyenne | ⬜ À faire |
+| Créer `ViewModels/MainViewModel.cs` | Nouveau fichier | 🟡 Moyenne | ⬜ À faire |
+| Ajouter commande Pause/Stop | `BackupJob.cs` | 🟡 Moyenne | ⬜ À faire |
+| Créer projet WPF/Blazor | Nouvelle assembly | 🟢 Basse | ⬜ À faire |
+
+---
+
+### 🏗️ Architecture cible V2.0 (MVVM)
+
+```mermaid
+classDiagram
+    %% ========== VUE (Nouvelle couche) ==========
+    class MainWindow {
+        <<WPF View>>
+        +DataContext: MainViewModel
+        -JobListView
+        -ProgressBars
+        -Buttons
+    }
+
+    %% ========== VIEWMODEL (Évolution de JobService) ==========
+    class MainViewModel {
+        <<ViewModel>>
+        +ObservableCollection~BackupJob~ Jobs
+        +ICommand CreateJobCommand
+        +ICommand ExecuteCommand
+        +ICommand PauseCommand
+        +SelectedJob: BackupJob
+        -OnPropertyChanged()
+    }
+
+    %% ========== MODÈLE (Inchangé) ==========
+    class BackupJob {
+        <<Model>>
+        +INotifyPropertyChanged
+        +Name, Source, Target, Type
+        +State, Progress, CurrentFile...
+        +Execute()
+        +Pause()
+        +Resume()
+    }
+
+    class IBackupStrategy {
+        <<interface>>
+    }
+
+    %% ========== SERVICES (Inchangé) ==========
+    class JobService {
+        <<Service>>
+        +SaveState()
+        +LoadState()
+    }
+
+    namespace EasyLog {
+        class Logger
+        class LogEntry
+    }
+
+    %% Relations MVVM
+    MainWindow --> MainViewModel : DataBinding
+    MainViewModel --> JobService : utilise
+    MainViewModel o-- BackupJob : ObservableCollection
+    BackupJob --> IBackupStrategy : utilise
+    BackupJob --> Logger : écrit logs
+```
+
+---
+
+### 📝 Notes importantes pour l'équipe
+
+1. **Ne pas casser la V1** : Les modifications pour la V2 doivent être **additives**. La V1 doit continuer à fonctionner.
+
+2. **Tests avant migration** : S'assurer que tous les scénarios V1 passent avant de commencer la V2.
+
+3. **Git branching** : Créer une branche `feature/mvvm-migration` pour la V2, garder `main` stable.
+
+4. **Compatibilité EasyLog.dll** : La DLL doit rester compatible avec la V1. Toute évolution doit être rétrocompatible.
 
 ---
 
